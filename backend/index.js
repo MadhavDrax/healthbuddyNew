@@ -28,7 +28,7 @@ connectDB();
 
 // Middleware
 const corsOptions = {
-  origin: ['https://healthbuddy-x0enff.flutterflow.app', 'http://localhost:5173', 'http://localhost:3000'],
+  origin: ['https://healthbuddy-x0enff.flutterflow.app', 'http://localhost:5173', 'http://localhost:3000', 'https://healthbuddy-frontend-z4r2.onrender.com'],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
