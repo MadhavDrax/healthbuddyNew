@@ -31,13 +31,57 @@ const userSchema = new mongoose.Schema({
     required: [true, 'Country is required'],
     trim: true
   },
-  sessionId: {
+  email: {
     type: String,
-    required: true,
-    unique: true
-  }
+    required: [true, 'Email is required'],
+    unique: true,
+    trim: true,
+    lowercase: true,
+  },
+  password: {
+    type: String,
+    required: [true, 'Password is required'],
+    minlength: 6,
+  },
+  role: {
+    type: String,
+    enum: ['user', 'admin'],
+    default: 'user'
+  },
+  status: {
+    type: String,
+    enum: ['Active', 'Suspended'],
+    default: 'Active'
+  },
+  resetPasswordOtp: String,
+  resetPasswordExpires: Date,
+  avatar: String,
 }, {
   timestamps: true
 });
+
+const bcrypt = require('bcryptjs');
+
+// Hash plain text password before saving
+userSchema.pre('save', async function (next) {
+    const user = this;
+    if (user.isModified('password')) {
+        user.password = await bcrypt.hash(user.password, 8);
+    }
+    next();
+});
+
+// Hide sensitive info like password and OTP when converting to JSON
+userSchema.methods.toJSON = function () {
+    const user = this;
+    const userObject = user.toObject();
+
+    delete userObject.password;
+    delete userObject.resetPasswordOtp;
+    delete userObject.resetPasswordExpires;
+
+    return userObject;
+};
+
 const User = mongoose.model('User', userSchema);
 module.exports = User;

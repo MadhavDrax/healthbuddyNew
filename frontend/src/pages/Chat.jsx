@@ -11,7 +11,7 @@ function Chat() {
   const [isRecording, setIsRecording] = useState(false);
   const [socketConnected, setSocketConnected] = useState(false);
   const messagesEndRef = useRef(null);
-  const { sessionId } = useAuth();
+  const { user } = useAuth();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -79,7 +79,7 @@ function Chat() {
     try {
       const socket = getSocket();
       if (socket && socketConnected) {
-        socket.emit('send_message', { message: inputValue.trim(), sessionId });
+        socket.emit('send_message', { message: inputValue.trim() });
       } else {
         // Fallback to HTTP if socket is not available
         const response = await sendMessage(inputValue.trim());

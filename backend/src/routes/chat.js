@@ -8,8 +8,9 @@ const router = express.Router();
 const groqService = require('../services/groq');
 const logger = require('../utils/logger');
 const { AppError } = require('../utils/errors');
+const auth = require('../middleware/auth');
 
-router.post('/message', async (req, res, next) => {
+router.post('/message', auth, async (req, res, next) => {
   try {
     const { message } = req.body;
     
@@ -84,7 +85,7 @@ router.post('/message', async (req, res, next) => {
 //     next(error);
 //   }
 // });
-router.get('/history/:userId', async (req, res) => {
+router.get('/history/:userId', auth, async (req, res) => {
   try {
     const { userId } = req.params;
     const messages = await Message.find({ userId })

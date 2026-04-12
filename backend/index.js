@@ -1,13 +1,15 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
 const mongoose = require('mongoose');
 const WebSocket = require('ws');
 const http = require('http');
-require('dotenv').config();
+const helmet = require('helmet');
+const compression = require('compression');
 const connectDB = require('./src/config/database');
-// const connectDB = require('./config/database');
 const limiter = require('./src/utils/rateLimit');
+const authLimiter = require('./src/utils/authRateLimit');
 const logger = require('./src/utils/logger');
 const AppError = require('./src/utils/errors');
 const validators = require('./src/utils/validators');
@@ -20,34 +22,62 @@ const speechRoutes = require('./src/routes/speech');
 const chatRoutes = require('./src/routes/chat');
 const healthRoutes = require('./src/routes/health');
 const userRoutes = require('./src/routes/userRoutes');
+const voiceRoutes = require('./src/routes/voice');
+const reviewRoutes = require('./src/routes/reviewRoutes');
+const adminRoutes = require('./src/routes/adminRoutes');
 
 const app = express();
 
 // Connect to MongoDB
 connectDB();
 
+// Render Load Balancer Support
+app.set('trust proxy', 1);
+
 // Middleware
+const allowedOrigins = [
+  'https://healthbuddy-x0enff.flutterflow.app',
+  'http://localhost:5173',
+  'http://localhost:3000',
+  process.env.FRONTEND_URL
+].filter(Boolean);
+
 const corsOptions = {
-  origin: ['https://healthbuddy-x0enff.flutterflow.app', 'http://localhost:5173', 'http://localhost:3000', 'https://healthbuddy-frontend-z4r2.onrender.com'],
+  origin: allowedOrigins,
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 };
 
+// Security Middleware
+app.use(helmet({
+  contentSecurityPolicy: false, // Set to true if you want strict CSP
+  crossOriginEmbedderPolicy: false
+}));
+app.use(compression());
 app.use(cors(corsOptions));
-// app.use(cors());
-app.use(express.json({ limit: '50mb' }));
+app.use(express.json({ limit: '10mb' }));
 app.use(limiter);
+
+// Specialized Rate Limiting for Auth
+app.use('/api/auth', authLimiter);
 
 // Routes
 app.use('/api/speech', speechRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/health', healthRoutes);
+app.use('/api/voice', voiceRoutes);
 app.use('/api/', userRoutes);
+app.use('/api/', reviewRoutes);
+app.use('/api/', adminRoutes);
 
-// Define axios client - put this BEFORE socket.io connection handler
+// Define axios client for internal interactions
+const BASE_URL = process.env.NODE_ENV === 'production' 
+  ? (process.env.BACKEND_URL || 'http://localhost:3001')
+  : 'http://localhost:3001';
+
 const apiClient = axios.create({
-  baseURL: 'http://localhost:3001', // Use your server's port
+  baseURL: BASE_URL,
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json'
@@ -94,8 +124,15 @@ io.on('connection', (socket) => {
       }
 
 
-      // Make API request
-      const response = await apiClient.post('/api/chat/message', { message });
+      // Make API request with Auth Token
+      const token = socket.handshake.auth?.token;
+      if (!token) {
+         return socket.emit('receive_message', { success: false, error: 'Unauthorized: missing token' });
+      }
+
+      const response = await apiClient.post('/api/chat/message', { message }, {
+         headers: { Authorization: `Bearer ${token}` }
+      });
       
       socket.emit('receive_message', response.data);
     } catch (error) {

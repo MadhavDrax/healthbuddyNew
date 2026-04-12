@@ -1,54 +1,65 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { createUser, getUserBySessionId } from '../services/api';
+import { signupUser, loginUser, adminLogin, getCurrentUser, updateUser } from '../services/api';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [sessionId, setSessionId] = useState(null);
 
   useEffect(() => {
-    // Generate or retrieve session ID
-    let storedSessionId = localStorage.getItem('healthbuddy_session_id');
-    if (!storedSessionId) {
-      storedSessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      localStorage.setItem('healthbuddy_session_id', storedSessionId);
-    }
-    setSessionId(storedSessionId);
+    const initAuth = async () => {
+      const token = localStorage.getItem('healthbuddy_token');
+      if (token) {
+        try {
+          const userData = await getCurrentUser();
+          setUser(userData);
+        } catch (error) {
+          console.error("Token verification failed:", error);
+          logout();
+        }
+      }
+      setLoading(false);
+    };
 
-    // Check for existing user data
-    const storedUser = localStorage.getItem('healthbuddy_user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setLoading(false);
+    initAuth();
   }, []);
 
-  const createUserProfile = async (userData) => {
-    const newUser = { ...userData, sessionId };
-    const created = await createUser(newUser);
-    setUser(created);
-    localStorage.setItem('healthbuddy_user', JSON.stringify(created));
-    return created;
+  const signup = async (userData) => {
+    const data = await signupUser(userData);
+    localStorage.setItem('healthbuddy_token', data.token);
+    setUser(data.user);
+    return data;
+  };
+
+  const login = async (credentials) => {
+    const data = await loginUser(credentials);
+    localStorage.setItem('healthbuddy_token', data.token);
+    setUser(data.user);
+    return data;
+  };
+
+  const loginAdmin = async (credentials) => {
+    const data = await adminLogin(credentials);
+    localStorage.setItem('healthbuddy_token', data.token);
+    setUser(data.user);
+    return data;
   };
 
   const updateUserProfile = async (userData) => {
     if (!user) return;
-    // Note: Update API needs to be implemented in backend
-    const updated = { ...user, ...userData };
+    const updated = await updateUser(userData);
     setUser(updated);
-    localStorage.setItem('healthbuddy_user', JSON.stringify(updated));
     return updated;
   };
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem('healthbuddy_user');
+    localStorage.removeItem('healthbuddy_token');
   };
 
   return (
-    <AuthContext.Provider value={{ user, sessionId, loading, createUserProfile, updateUserProfile, logout }}>
+    <AuthContext.Provider value={{ user, loading, signup, login, loginAdmin, updateUserProfile, logout }}>
       {children}
     </AuthContext.Provider>
   );

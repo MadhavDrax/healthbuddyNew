@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react';
 import { User, Save, Edit2, Check, X, Activity, Droplet, Ruler, Calendar, MapPin, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { createUser, updateUser } from '../services/api';
 
 const bloodGroups = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
 
 function Profile() {
-  const { user, sessionId, createUserProfile, updateUserProfile, logout } = useAuth();
+  const { user, updateUserProfile, logout } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
@@ -51,9 +50,12 @@ function Profile() {
     setIsSaving(true);
     try {
       if (user && user._id) {
-        await updateUser(user._id, formData);
+        await updateUserProfile(formData);
       } else {
-        await createUserProfile(formData);
+        // Since signup is now handled directly via /signup page, 
+        // the Profile page should only be used to update the profile.
+        // If not logged in, they shouldn't even be here due to ProtectedRoute.
+        await updateUserProfile(formData);
       }
       setIsEditing(false);
     } catch (error) {
@@ -313,21 +315,7 @@ function Profile() {
         </div>
       </div>
 
-      {/* Session Info */}
-      {user && (
-        <div className="bg-slate-100 rounded-xl p-4 text-center">
-          <p className="text-sm text-slate-500">
-            Session ID: <code className="bg-slate-200 px-2 py-1 rounded text-xs">{sessionId}</code>
-          </p>
-          <button
-            onClick={handleLogout}
-            className="mt-3 flex items-center justify-center gap-2 mx-auto text-red-600 hover:text-red-700 text-sm font-medium"
-          >
-            <LogOut className="w-4 h-4" />
-            Clear Profile & Logout
-          </button>
-        </div>
-      )}
+      {/* Session Info logic removed as JWT handles it gracefully */}
 
       {/* Info Box */}
       {!user && (

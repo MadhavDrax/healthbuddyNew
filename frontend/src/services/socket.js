@@ -1,17 +1,22 @@
 import { io } from 'socket.io-client';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://healthbuddy-backend-rvo3.onrender.com';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 let socket = null;
 
 export const connectSocket = () => {
   if (socket) return socket;
 
+  const token = localStorage.getItem('healthbuddy_token');
+
   socket = io(API_URL, {
     transports: ['websocket', 'polling'],
     reconnection: true,
     reconnectionAttempts: 5,
     reconnectionDelay: 1000,
+    auth: {
+      token
+    }
   });
 
   socket.on('connect', () => {
