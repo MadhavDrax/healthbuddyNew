@@ -39,6 +39,8 @@ const allowedOrigins = [
   'https://healthbuddy-x0enff.flutterflow.app',
   'http://localhost:5173',
   'http://localhost:3000',
+  'https://healthbuddy-frontend-z4r2.onrender.com',
+  'https://healthbuddy-backend-rvo3.onrender.com',
   process.env.FRONTEND_URL
 ].filter(Boolean);
 
@@ -72,7 +74,7 @@ app.use('/api/', reviewRoutes);
 app.use('/api/', adminRoutes);
 
 // Define axios client for internal interactions
-const BASE_URL = process.env.NODE_ENV === 'production' 
+const BASE_URL = process.env.NODE_ENV === 'production'
   ? (process.env.BACKEND_URL || 'http://localhost:3001')
   : 'http://localhost:3001';
 
@@ -127,13 +129,13 @@ io.on('connection', (socket) => {
       // Make API request with Auth Token
       const token = socket.handshake.auth?.token;
       if (!token) {
-         return socket.emit('receive_message', { success: false, error: 'Unauthorized: missing token' });
+        return socket.emit('receive_message', { success: false, error: 'Unauthorized: missing token' });
       }
 
       const response = await apiClient.post('/api/chat/message', { message }, {
-         headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       socket.emit('receive_message', response.data);
     } catch (error) {
       logger.error('WebSocket error:', error.message);
